@@ -12,5 +12,9 @@ data class Item(
     val name: String,
     @field:NotBlank
     @field:Size(max = 100)
-    val description: String
+    val description: String,
+    @field:NotBlank
+    @field:Size(max = 100)
+    val category: String
+
 )
