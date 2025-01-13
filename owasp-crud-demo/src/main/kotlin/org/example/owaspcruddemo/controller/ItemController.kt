@@ -1,5 +1,8 @@
 package org.example.owaspcruddemo.controller
 
+import dto.CreateItemDto
+import dto.UpdateItemDto
+import jakarta.validation.Valid
 import org.example.owaspcruddemo.model.Item
 import org.example.owaspcruddemo.repository.ItemRepository
 import org.springframework.http.ResponseEntity
@@ -19,11 +22,11 @@ class ItemController(
 ) {
 
     @PostMapping
-    fun createItem(@RequestBody item: Item): ResponseEntity<Item> {
-        // OWASP: Validujte vstupy na strane servera (SQL/NoSQL Injection)
-        if (item.name.isBlank() || item.description.isBlank()) {
-            return ResponseEntity.badRequest().build()
-        }
+    fun createItem(@RequestBody itemDto: CreateItemDto): ResponseEntity<Item> {
+        //OWASP: použite DTO
+        //OWASP: Validujte vstupy na strane servera
+        //OWASP: autentizácia/autorizácia
+        val item = itemDto.toDomain()
         val savedItem = itemRepository.save(item)
         return ResponseEntity.ok(savedItem)
     }
@@ -31,23 +34,35 @@ class ItemController(
     @GetMapping("/{id}")
     fun getItem(@PathVariable id: String): ResponseEntity<Item> {
         // OWASP: Overte vstup na strane servera (ID môže byť manipulované)
+        //OWASP: autentizácia/autorizácia
         val item = itemRepository.findById(id)
         return if (item.isPresent) ResponseEntity.ok(item.get()) else ResponseEntity.notFound().build()
     }
 
     @GetMapping
     fun getAllItems(): List<Item> {
-        // OWASP: Limitujte počet vrátených záznamov
+        // OWASP: limitovanie počtu vŕatených items
+        //OWASP: autentizácia/autorizácia
         return itemRepository.findAll()
     }
 
     @PutMapping("/{id}")
-    fun updateItem(@PathVariable id: String, @RequestBody item: Item): ResponseEntity<Item> {
-        //OWASP: zistit ci existuje este pred aktualizaciou
+    fun updateItem(
+        @PathVariable id: String,
+        @Valid @RequestBody updateDto: UpdateItemDto
+    ): ResponseEntity<Item> {
+        // OWASP: Skontroluj, či existuje záznam s daným ID
+        //OWASP: autentizácia/autorizácia
         val existingItem = itemRepository.findById(id)
+
         return if (existingItem.isPresent) {
-            val updatedItem = itemRepository.save(existingItem.get().copy(name = item.name, description = item.description))
-            ResponseEntity.ok(updatedItem)
+            val updatedItem = existingItem.get().copy(
+                name = updateDto.name ?: existingItem.get().name,
+                description = updateDto.description ?: existingItem.get().description,
+                category = updateDto.category ?: existingItem.get().category
+            )
+
+            ResponseEntity.ok(itemRepository.save(updatedItem))
         } else {
             ResponseEntity.notFound().build()
         }
@@ -55,7 +70,7 @@ class ItemController(
 
     @DeleteMapping("/{id}")
     fun deleteItem(@PathVariable id: String): ResponseEntity<Void> {
-        //OWASP: autentizáciou/autorizáciou
+        //OWASP: autentizácia/autorizácia
         itemRepository.deleteById(id)
         return ResponseEntity.noContent().build()
     }
