@@ -7,7 +7,6 @@ import org.springframework.data.annotation.Id
 data class Item(
     @Id
     val id: String? = null,
-    @field:NotBlank
     @field:Size(max = 50)
     val name: String,
     @field:NotBlank
