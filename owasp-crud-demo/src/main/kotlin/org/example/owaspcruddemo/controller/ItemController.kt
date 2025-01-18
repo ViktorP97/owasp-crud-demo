@@ -22,7 +22,7 @@ class ItemController(
 ) {
 
     @PostMapping
-    fun createItem(@RequestBody itemDto: CreateItemDto): ResponseEntity<Item> {
+    fun createItem(@Valid @RequestBody itemDto: CreateItemDto): ResponseEntity<Item> {
         //OWASP: použite DTO
         //OWASP: Validujte vstupy na strane servera
         //OWASP: autentizácia/autorizácia
