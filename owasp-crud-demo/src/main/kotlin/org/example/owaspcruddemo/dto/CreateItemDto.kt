@@ -1,4 +1,4 @@
-package dto
+package org.example.owaspcruddemo.dto
 
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -19,7 +19,7 @@ data class CreateItemDto(
 ) {
     fun toDomain(): Item {
         return Item(
-            id = UUID.randomUUID().toString(),
+            id = UUID.randomUUID(),
             name = name,
             description = description,
             category = category
