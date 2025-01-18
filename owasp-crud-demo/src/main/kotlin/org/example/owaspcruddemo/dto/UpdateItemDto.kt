@@ -1,4 +1,4 @@
-package dto
+package org.example.owaspcruddemo.dto
 
 import jakarta.validation.constraints.Size
 
