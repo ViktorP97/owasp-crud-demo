@@ -16,13 +16,4 @@ data class CreateItemDto(
     @field:NotBlank
     @field:Size(max = 100)
     val category: String
-) {
-    fun toDomain(): Item {
-        return Item(
-            id = UUID.randomUUID(),
-            name = name,
-            description = description,
-            category = category
-        )
-    }
-}
+)

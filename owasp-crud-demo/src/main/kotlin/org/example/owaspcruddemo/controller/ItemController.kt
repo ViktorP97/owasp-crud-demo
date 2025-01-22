@@ -4,7 +4,9 @@ import org.example.owaspcruddemo.dto.CreateItemDto
 import org.example.owaspcruddemo.dto.UpdateItemDto
 import jakarta.validation.Valid
 import org.example.owaspcruddemo.model.Item
+import org.example.owaspcruddemo.model.SearchCriteria
 import org.example.owaspcruddemo.repository.ItemRepository
+import org.example.owaspcruddemo.usecase.SearchItems
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -14,14 +16,17 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.OffsetDateTime
 import java.util.UUID
 
 @RestController
 @RequestMapping("/api/items")
 @Validated
 class ItemController(
-    private val itemRepository: ItemRepository
+    private val itemRepository: ItemRepository,
+    private val searchItems: SearchItems
 ) {
 
     @PostMapping
@@ -29,7 +34,7 @@ class ItemController(
         //OWASP: použite DTO
         //OWASP: Validujte vstupy na strane servera
         //OWASP: autentizácia/autorizácia
-        val item = itemDto.toDomain()
+        val item = Item.create(itemDto.name, itemDto.description, itemDto.category)
         val savedItem = itemRepository.save(item)
         return ResponseEntity.ok(savedItem)
     }
@@ -38,8 +43,8 @@ class ItemController(
     fun getItem(@PathVariable id: UUID): ResponseEntity<Item> {
         // OWASP: Overte vstup na strane servera (ID môže byť manipulované)
         //OWASP: autentizácia/autorizácia
-        val item = itemRepository.findById(id)
-        return if (item.isPresent) ResponseEntity.ok(item.get()) else ResponseEntity.notFound().build()
+        val item = itemRepository.findById(id).orElse(null) ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(item)
     }
 
     @GetMapping
@@ -56,35 +61,40 @@ class ItemController(
     ): ResponseEntity<Item> {
         // OWASP: Skontroluj, či existuje záznam s daným ID
         //OWASP: autentizácia/autorizácia
-        val existingItem = itemRepository.findById(id)
-
-        if (updateDto.name?.isBlank() == true
-            || updateDto.description?.isBlank() == true
-            || updateDto.category?.isBlank() == true
-            ) {
-            return ResponseEntity.badRequest().body(null)
-        }
-
-        return if (existingItem.isPresent) {
-            val updatedItem = existingItem.get().copy(
-                name = updateDto.name ?: existingItem.get().name,
-                description = updateDto.description ?: existingItem.get().description,
-                category = updateDto.category ?: existingItem.get().category
+        return itemRepository.findById(id).map { existingItem ->
+            val updatedItem = existingItem.copy(
+                name = updateDto.name ?: existingItem.name,
+                description = updateDto.description ?: existingItem.description,
+                category = updateDto.category ?: existingItem.category
             )
-
             ResponseEntity.ok(itemRepository.save(updatedItem))
-        } else {
+        }.orElseGet {
             ResponseEntity.notFound().build()
         }
     }
 
     @DeleteMapping("/{id}")
     fun deleteItem(@PathVariable id: UUID): ResponseEntity<Void> {
-        val item = itemRepository.findById(id)
-        if (!item.isPresent) {
-            return ResponseEntity.notFound().build()
-        }
-        itemRepository.deleteById(id)
+        val item = itemRepository.findById(id).orElse(null) ?: return ResponseEntity.notFound().build()
+
+        itemRepository.deleteById(item.id)
         return ResponseEntity.noContent().build()
+    }
+
+    @GetMapping("/search")
+    fun searchItems(
+        @RequestParam name: String? = null,
+        @RequestParam after: String? = null,
+        @RequestParam before: String? = null
+    ): ResponseEntity<List<Item>> {
+        val searchCriteria = SearchCriteria(
+            name = name?.takeIf { it.isNotBlank() },
+            after = after?.takeIf { it.isNotBlank() }?.let { OffsetDateTime.parse(it).toInstant() },
+            before = before?.takeIf { it.isNotBlank() }?.let { OffsetDateTime.parse(it).toInstant() }
+        )
+
+        val results = searchItems.execute(searchCriteria)
+
+        return ResponseEntity.ok(results)
     }
 }
