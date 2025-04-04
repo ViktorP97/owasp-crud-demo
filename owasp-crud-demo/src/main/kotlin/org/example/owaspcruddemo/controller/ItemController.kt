@@ -5,8 +5,7 @@ import org.example.owaspcruddemo.dto.UpdateItemDto
 import jakarta.validation.Valid
 import org.example.owaspcruddemo.model.Item
 import org.example.owaspcruddemo.model.SearchCriteria
-import org.example.owaspcruddemo.repository.ItemRepository
-import org.example.owaspcruddemo.usecase.SearchItems
+import org.example.owaspcruddemo.service.ItemService
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -25,8 +24,7 @@ import java.util.UUID
 @RequestMapping("/api/items")
 @Validated
 class ItemController(
-    private val itemRepository: ItemRepository,
-    private val searchItems: SearchItems
+    private val itemService: ItemService
 ) {
 
     @PostMapping
@@ -35,7 +33,7 @@ class ItemController(
         //OWASP: Validujte vstupy na strane servera
         //OWASP: autentizácia/autorizácia
         val item = Item.create(itemDto.name, itemDto.description, itemDto.category)
-        val savedItem = itemRepository.save(item)
+        val savedItem = itemService.save(item)
         return ResponseEntity.ok(savedItem)
     }
 
@@ -43,7 +41,7 @@ class ItemController(
     fun getItem(@PathVariable id: UUID): ResponseEntity<Item> {
         // OWASP: Overte vstup na strane servera (ID môže byť manipulované)
         //OWASP: autentizácia/autorizácia
-        val item = itemRepository.findById(id).orElse(null) ?: return ResponseEntity.notFound().build()
+        val item = itemService.findById(id) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(item)
     }
 
@@ -51,7 +49,7 @@ class ItemController(
     fun getAllItems(): List<Item> {
         // OWASP: limitovanie počtu vŕatených items
         //OWASP: autentizácia/autorizácia
-        return itemRepository.findAll()
+        return itemService.findAll()
     }
 
     @PutMapping("/{id}")
@@ -59,25 +57,26 @@ class ItemController(
         @PathVariable id: UUID,
         @Valid @RequestBody updateDto: UpdateItemDto
     ): ResponseEntity<Item> {
-        // OWASP: Skontroluj, či existuje záznam s daným ID
-        //OWASP: autentizácia/autorizácia
-        return itemRepository.findById(id).map { existingItem ->
+        val existingItem = itemService.findById(id)
+
+        return if (existingItem != null) {
             val updatedItem = existingItem.copy(
                 name = updateDto.name ?: existingItem.name,
                 description = updateDto.description ?: existingItem.description,
                 category = updateDto.category ?: existingItem.category
             )
-            ResponseEntity.ok(itemRepository.save(updatedItem))
-        }.orElseGet {
+            val savedItem = itemService.save(updatedItem)
+            ResponseEntity.ok(savedItem)
+        } else {
             ResponseEntity.notFound().build()
         }
     }
 
     @DeleteMapping("/{id}")
     fun deleteItem(@PathVariable id: UUID): ResponseEntity<Void> {
-        val item = itemRepository.findById(id).orElse(null) ?: return ResponseEntity.notFound().build()
+        val item = itemService.findById(id) ?: return ResponseEntity.notFound().build()
 
-        itemRepository.deleteById(item.id)
+        itemService.delete(item.id)
         return ResponseEntity.noContent().build()
     }
 
@@ -93,7 +92,7 @@ class ItemController(
             before = before?.takeIf { it.isNotBlank() }?.let { OffsetDateTime.parse(it).toInstant() }
         )
 
-        val results = searchItems.execute(searchCriteria)
+        val results = itemService.search(searchCriteria)
 
         return ResponseEntity.ok(results)
     }
