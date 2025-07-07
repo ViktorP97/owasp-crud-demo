@@ -2,7 +2,6 @@ package org.example.owaspcruddemo.service
 
 import org.example.owaspcruddemo.model.Item
 import org.example.owaspcruddemo.model.SearchCriteria
-import org.example.owaspcruddemo.usecase.SearchItems
 import org.springframework.context.annotation.Profile
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.core.ValueOperations
@@ -12,8 +11,7 @@ import java.util.UUID
 @Profile("redis")
 @Component
 class RedisItemService(
-    private val redisTemplate: RedisTemplate<String, Item>,
-    private val searchItems: SearchItems
+    private val redisTemplate: RedisTemplate<String, Item>
 ) : ItemService {
 
     private val ops: ValueOperations<String, Item> = redisTemplate.opsForValue()
@@ -37,7 +35,6 @@ class RedisItemService(
     }
 
     override fun search(criteria: SearchCriteria): List<Item> {
-        val items = findAll()
-        return searchItems.executeRedis(items, criteria)
+        throw UnsupportedOperationException("Search in Redis is not supported")
     }
 }

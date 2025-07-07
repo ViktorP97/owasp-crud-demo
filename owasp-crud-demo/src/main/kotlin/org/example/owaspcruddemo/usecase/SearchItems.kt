@@ -28,22 +28,4 @@ class SearchItems(
 
         return mongoTemplate.find(query, Item::class.java)
     }
-
-    fun executeRedis(items: List<Item> ,criteria: SearchCriteria): List<Item> {
-        return items.filter { item ->
-            val nameMatch = criteria.name?.let {
-                item.name.contains(it, ignoreCase = true)
-            } ?: true
-
-            val afterMatch = criteria.after?.let {
-                item.time.isAfter(it)
-            } ?: true
-
-            val beforeMatch = criteria.before?.let {
-                item.time.isBefore(it)
-            } ?: true
-
-            nameMatch && afterMatch && beforeMatch
-        }
-    }
 }
